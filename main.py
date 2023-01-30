@@ -12,9 +12,6 @@ class Pub:
         self.probClicTh = prob_clic_th
 
 
-pubs = []
-for i in range(1, 10):
-    pubs.append(Pub("pub" + str(i), random.random()))
 
 
 def display(pub):
@@ -30,6 +27,12 @@ def clic(pub):
 def choose_ad(pubs):
     prob_clic_eff_list = [pub.probClicEff for pub in pubs]
     return pubs[prob_clic_eff_list.index(max(prob_clic_eff_list))]
+
+def reset_stats(pubs):
+    for pub in pubs:
+        pub.probClicEff = 1
+        pub.clic = 0
+        pub.display = 0
 
 
 def full_random_choice(list_pub):
@@ -68,7 +71,11 @@ def upper_min_theorical_choice(list_pub, minimum_click_through_rate):
             clic(rand_pub)
             nbr_clic += 1
 
+        list_pub.sort(key=lambda x: x.probClicEff, reverse=True)
+        best_pub = list_pub[0]
         list_pub = list(filter(lambda x: x.probClicEff >= minimum_click_through_rate, list_pub))
+        if not list_pub:
+            list_pub.append(best_pub)
 
     list_pub = sorted(list_pub, key=lambda x: x.probClicEff)
 
@@ -80,6 +87,7 @@ def upper_min_theorical_choice(list_pub, minimum_click_through_rate):
 
     print('Nombre de clic total : ' + str(nbr_clic))
     print('\n')
+    return nbr_clic
 
 
 def bandit_algorithm(pubs):
@@ -103,9 +111,73 @@ def bandit_algorithm(pubs):
 
     print('Nombre de clic total : ' + str(nbr_clic))
     print('\n')
+    return nbr_clic
 
 
-full_random_choice(pubs)
-upper_min_theorical_choice(pubs, 0.5)
+def ordering_choice(list_pub, minimum_click_through_rate):
+    nbr_clic = 0
+    selected_pub_idx = 0
+    missed_occurence = 0
+
+    for i in range(1, MAX_ITERATE):
+        selected_pub = list_pub[selected_pub_idx]
+        display(selected_pub)
+
+        if random.random() < selected_pub.probClicTh:
+            clic(selected_pub)
+            nbr_clic += 1
+            continue
+
+        missed_occurence += 1
+        if missed_occurence == 2:
+            missed_occurence = 0
+            selected_pub_idx += 1
+            if selected_pub_idx == len(list_pub):
+                selected_pub_idx = 0
+                list_pub.sort(key=lambda x: x.probClicEff, reverse=True)
+                best_pub = list_pub[0]
+                list_pub = list(filter(lambda x: x.probClicEff >= minimum_click_through_rate, list_pub))
+                if not list_pub:
+                    list_pub.append(best_pub)
+
+
+    list_pub = sorted(list_pub, key=lambda x: x.probClicEff)
+
+    print("========== SELECTION PAR TRI DE LISTE + SEUIL ==========\n")
+
+    for pub in list_pub:
+        print(pub.name + ' : ' + str(pub.probClicEff) + ' clic effectif pour une proba de clic théorique de ' +
+              str(pub.probClicTh) + ' - ' + str(pub.clic) + ' realisés')
+
+    print('Nombre de clic total : ' + str(nbr_clic))
+    print('\n')
+    return nbr_clic
+
+
+clics_umtc = []
+clics_oc = []
+clics_avantage_to_oc = []
+for essai in range(1000):
+    pubs = []
+    for i in range(1, 10):
+        pubs.append(Pub("pub" + str(i), random.random()))
+
+    umtc = upper_min_theorical_choice(pubs, 0.5)
+    reset_stats(pubs)
+    clics_umtc.append(umtc)
+    oc = ordering_choice(pubs, 0.5)
+    reset_stats(pubs)
+    clics_oc.append(oc)
+    clics_avantage_to_oc.append(oc - umtc)
+
+print(clics_umtc)
+print(clics_oc)
+print(clics_avantage_to_oc)
+print(sum(clics_avantage_to_oc))
+
+
+
+# full_random_choice(pubs)
+
 # upper_min_theorical_choice(pubs, 0.7)
-bandit_algorithm(pubs)
+# bandit_algorithm(pubs)
